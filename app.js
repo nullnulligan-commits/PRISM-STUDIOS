@@ -1,4 +1,3 @@
-import { installCPUBackend } from './cpu-renderer.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
@@ -9,6 +8,8 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+
+import { installCPUBackend } from './cpu-renderer.js';
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -1941,7 +1942,13 @@ function updateRenderHUD(now) {
 function animate(now = 0) {
   requestAnimationFrame(animate);
 
-  if (document.hidden || contextLost document.querySelector('#cpuOutput')?.open return;
+  // Suspend the editor's rendering while the CPU output window is open.
+  if (
+    document.hidden ||
+    contextLost ||
+    document.querySelector('#cpuOutput')?.open
+  ) return;
+
   if (now - lastFrame < 1000 / preferences.fps - .5) return;
   lastFrame = now;
 
@@ -1999,10 +2006,11 @@ if (matchMedia('(max-width: 520px)').matches) {
 $('#status').textContent = 'Ready — Ctrl/Cmd K opens commands';
 requestAnimationFrame(animate);
 
+// CPU rendering backend.
 installCPUBackend({
   THREE,
   scene,
   camera,
   content,
   renderGPU: () => setMode('output')
-}
+});
