@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#202124">
+  <title>Luma Studio — Web 3D Editor</title>
+
+  <link rel="stylesheet" href="./styles.css">
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module" src="./app.js"></script>
+</head>
+
+<body>
+  <header class="app-header">
+    <a class="brand" href="./" aria-label="Luma Studio">
+      <span class="brand-icon">◉</span>
+      <span>LUMA <b>STUDIO</b></span>
+    </a>
+
+    <details class="menu">
+      <summary>File</summary>
+      <div class="menu-popup">
+        <button id="newScene">New empty scene</button>
+        <button id="importScene">Import models…</button>
+        <button id="exportScene">Export GLB</button>
+        <button id="exportPNG">Save viewport PNG</button>
+      </div>
+    </details>
+
+    <details class="menu">
+      <summary>Edit</summary>
+      <div class="menu-popup">
+        <button id="undo">Undo <kbd>Ctrl Z</kbd></button>
+        <button id="redo">Redo <kbd>Ctrl Shift Z</kbd></button>
+        <button id="duplicate">Duplicate <kbd>Shift D</kbd></button>
+        <button id="delete">Delete selected</button>
+      </div>
+    </details>
+
+    <details class="menu" id="addMenu">
+      <summary>Add</summary>
+      <div class="menu-popup" id="addItems"></div>
+    </details>
+
+    <nav class="workspace-tabs" aria-label="Workspace">
+      <button class="active" data-workspace="layout">Layout</button>
+      <button data-workspace="modeling">Modeling</button>
+      <button data-workspace="shading">Shading</button>
+      <button data-workspace="rendering">Rendering</button>
+    </nav>
+
+    <div class="spacer"></div>
+
+    <button id="openCommands" title="Command palette: Ctrl/Cmd K">⌕ Commands</button>
+    <button id="focusMode" aria-pressed="false">Focus</button>
+    <button id="openSettings" title="Appearance and performance">⚙ Customize</button>
+  </header>
+
+  <main>
+    <section class="workspace">
+      <div class="viewport-toolbar">
+        <select id="transformSpace" aria-label="Transform orientation">
+          <option value="world">Global</option>
+          <option value="local">Local</option>
+        </select>
+
+        <button id="frameSelected" title="Frame selected: F">Frame</button>
+
+        <label class="inline-check">
+          <input id="showGrid" type="checkbox" checked>
+          Grid
+        </label>
+
+        <div class="spacer"></div>
+
+        <div class="mode-buttons" aria-label="Viewport mode">
+          <button data-mode="solid">Solid</button>
+          <button class="active" data-mode="shaded">Shaded</button>
+          <button data-mode="wire">Wire</button>
+          <button data-mode="rendered" title="Progressive GPU path tracing">Rendered</button>
+          <button data-mode="output" title="Clean path-traced output">Output</button>
+        </div>
+      </div>
+
+      <div id="viewport">
+        <div class="tool-rail" id="toolRail">
+          <button class="active" data-tool="translate" title="Move: G">↔</button>
+          <button data-tool="rotate" title="Rotate: R">⟳</button>
+          <button data-tool="scale" title="Scale: S">⛶</button>
+          <button id="quickAdd" title="Add object: Shift A">＋</button>
+        </div>
+
+        <div class="viewport-overlay" id="viewportOverlay">
+          <strong id="viewName">User Perspective</strong>
+          <span id="selectionLabel">Scene Collection</span>
+          <span id="renderInfo">Material preview</span>
+        </div>
+
+        <div class="view-buttons" id="viewButtons">
+          <button data-view="front" title="Front view">Front</button>
+          <button data-view="right" title="Right view">Right</button>
+          <button data-view="top" title="Top view">Top</button>
+          <button data-view="iso" title="Perspective view">⌂</button>
+        </div>
+
+        <div id="viewportHint">
+          Drag: orbit · Right-drag: pan · Wheel: zoom · Click: select · F: frame
+        </div>
+
+        <div id="dropOverlay">Drop GLB, GLTF, or OBJ + companion files</div>
+        <div id="toast" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <aside id="sidebar">
+      <div class="panel-heading">
+        <span>▤ Scene Collection</span>
+        <small id="objectCount">0 objects</small>
+      </div>
+
+      <div id="outliner" aria-label="Scene objects"></div>
+
+      <div class="panel-heading">
+        <span>⚙ Object & Render Properties</span>
+      </div>
+
+      <div id="properties">
+        <section class="property-section">
+          <h2>Transform</h2>
+
+          <input id="objectName" placeholder="Select an object" aria-label="Object name" disabled>
+
+          <div class="field">
+            <label>Location</label>
+            <div>
+              <div class="axis-labels"><span>X</span><span>Y</span><span>Z</span></div>
+              <div class="xyz" data-property="position">
+                <input type="number" step=".1" data-axis="x" aria-label="Location X">
+                <input type="number" step=".1" data-axis="y" aria-label="Location Y">
+                <input type="number" step=".1" data-axis="z" aria-label="Location Z">
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Rotation °</label>
+            <div class="xyz" data-property="rotation">
+              <input type="number" step="5" data-axis="x" aria-label="Rotation X">
+              <input type="number" step="5" data-axis="y" aria-label="Rotation Y">
+              <input type="number" step="5" data-axis="z" aria-label="Rotation Z">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Scale</label>
+            <div class="xyz" data-property="scale">
+              <input type="number" step=".1" min=".001" data-axis="x" aria-label="Scale X">
+              <input type="number" step=".1" min=".001" data-axis="y" aria-label="Scale Y">
+              <input type="number" step=".1" min=".001" data-axis="z" aria-label="Scale Z">
+            </div>
+          </div>
+
+          <div class="two-buttons">
+            <button id="duplicateObject">Duplicate</button>
+            <button id="deleteObject">Delete</button>
+          </div>
+
+          <p class="note">
+            Click a mesh to edit it. Select its collection in the outliner to
+            move the entire collection. Coordinates use Y-up.
+          </p>
+        </section>
+
+        <section class="property-section" id="materialSection">
+          <h2>Surface / Light</h2>
+
+          <div class="field">
+            <label for="surfaceColor">Color</label>
+            <input id="surfaceColor" type="color" value="#b6bec8">
+          </div>
+
+          <div class="field">
+            <label for="roughness">Roughness</label>
+            <input id="roughness" type="range" min="0" max="1" step=".01" value=".5">
+          </div>
+
+          <div class="field">
+            <label for="metalness">Metallic</label>
+            <input id="metalness" type="range" min="0" max="1" step=".01" value="0">
+          </div>
+
+          <div class="field">
+            <label for="transmission">Transmission</label>
+            <input id="transmission" type="range" min="0" max="1" step=".01" value="0">
+          </div>
+
+          <div class="field">
+            <label for="emission">Emission</label>
+            <input id="emission" type="number" min="0" max="100" step=".5" value="0">
+          </div>
+
+          <div class="field">
+            <label for="lightPower">Light power</label>
+            <input id="lightPower" type="number" min="0" max="10000" step="5" value="20">
+          </div>
+
+          <p class="note">
+            Emission uses the surface color and illuminates nearby objects in
+            path-traced modes. Transmission creates glass-like surfaces.
+            Changes apply to every mesh in a selected collection.
+          </p>
+        </section>
+
+        <section class="property-section" id="renderSection">
+          <h2>Path Tracing</h2>
+
+          <div class="field">
+            <label for="renderPreset">Preset</label>
+            <select id="renderPreset">
+              <option value="draft">Draft</option>
+              <option value="balanced" selected>Balanced</option>
+              <option value="final">Final</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="samples">Samples</label>
+            <select id="samples">
+              <option>16</option>
+              <option>32</option>
+              <option>64</option>
+              <option selected>128</option>
+              <option>256</option>
+              <option>512</option>
+              <option>1024</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="bounces">Light bounces</label>
+            <input id="bounces" type="number" min="1" max="16" step="1" value="6">
+          </div>
+
+          <div class="field">
+            <label for="renderScale">Resolution</label>
+            <select id="renderScale">
+              <option value=".5">50% — faster</option>
+              <option value=".75" selected>75%</option>
+              <option value="1">100%</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="exposure">Exposure</label>
+            <input id="exposure" type="range" min=".1" max="3" step=".05" value="1">
+          </div>
+
+          <div class="field">
+            <label for="environmentPower">Environment</label>
+            <input id="environmentPower" type="range" min="0" max="3" step=".05" value=".65">
+          </div>
+
+          <button class="primary full" id="startRender">▶ Start Path Tracing</button>
+
+          <div class="two-buttons">
+            <button id="pauseRender">⏸ Pause</button>
+            <button id="restartRender">↻ Restart</button>
+          </div>
+
+          <button class="full" id="saveRender">↓ Save PNG</button>
+          <button class="full" id="bounceDemo">Add Light-Bounce Demo</button>
+
+          <p class="note">
+            More samples reduce noise. More bounces allow indirect lighting,
+            reflected color, and longer glass/light paths.
+            No denoiser or advanced path-guiding algorithm is included.
+          </p>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <span id="status">Starting renderer…</span>
+    <div class="spacer"></div>
+    <span id="sceneStats"></span>
+    <div class="progress-track"><div id="progressFill"></div></div>
+    <span id="sampleStatus">Raster preview</span>
+  </footer>
+
+  <dialog id="settingsDialog">
+    <div class="dialog-header">
+      <div>
+        <h2>Make it yours</h2>
+        <p>Appearance, workspace, and performance.</p>
+      </div>
+      <button data-close-dialog aria-label="Close settings">✕</button>
+    </div>
+
+    <div class="dialog-body">
+      <section class="settings-section">
+        <h3>Appearance</h3>
+
+        <label class="setting">
+          <span>Theme</span>
+          <select id="uiTheme">
+            <option value="graphite">Graphite</option>
+            <option value="midnight">Midnight</option>
+            <option value="forest">Forest</option>
+            <option value="plum">Plum</option>
+          </select>
+        </label>
+
+        <label class="setting">
+          <span>Accent color</span>
+          <input id="uiAccent" type="color">
+        </label>
+
+        <label class="setting">
+          <span>Viewport background</span>
+          <input id="uiBackground" type="color">
+        </label>
+
+        <label class="setting">
+          <span>Compact interface</span>
+          <input id="uiCompact" type="checkbox">
+        </label>
+
+        <label class="setting">
+          <span>Sidebar width</span>
+          <input id="uiWidth" type="range" min="250" max="420" step="10">
+        </label>
+
+        <label class="setting">
+          <span>Navigation tips</span>
+          <input id="uiTips" type="checkbox">
+        </label>
+      </section>
+
+      <section class="settings-section">
+        <h3>Performance</h3>
+
+        <label class="setting">
+          <span>Viewport pixel ratio</span>
+          <select id="uiPixels">
+            <option value=".75">0.75× — lightweight</option>
+            <option value="1">1× — recommended</option>
+            <option value="1.5">1.5× — sharper</option>
+            <option value="2">2× — high GPU usage</option>
+          </select>
+        </label>
+
+        <label class="setting">
+          <span>Frame-rate limit</span>
+          <select id="uiFPS">
+            <option value="24">24 FPS — battery saver</option>
+            <option value="30">30 FPS — balanced</option>
+            <option value="60">60 FPS — smooth</option>
+          </select>
+        </label>
+
+        <label class="setting">
+          <span>Preview shadows</span>
+          <input id="uiShadows" type="checkbox">
+        </label>
+
+        <div class="two-buttons">
+          <button id="batteryPreset">⚡ Battery saver</button>
+          <button id="qualityPreset">✦ Quality preview</button>
+        </div>
+
+        <p class="note">
+          Lower pixel ratios also reduce PNG output dimensions. Hidden tabs
+          pause rendering. Preview shadows do not control path-traced shadows.
+        </p>
+      </section>
+
+      <section class="settings-section shortcuts">
+        <h3>Keyboard shortcuts</h3>
+        <div><span>Command palette</span><kbd>Ctrl / ⌘ K</kbd></div>
+        <div><span>Move / Rotate / Scale</span><kbd>G / R / S</kbd></div>
+        <div><span>Add object</span><kbd>Shift A</kbd></div>
+        <div><span>Frame selected</span><kbd>F</kbd></div>
+        <div><span>Duplicate</span><kbd>Shift D</kbd></div>
+        <div><span>Undo</span><kbd>Ctrl / ⌘ Z</kbd></div>
+      </section>
+    </div>
+
+    <div class="dialog-footer">
+      <small>Preferences are saved on this browser.</small>
+      <button id="resetPreferences">Reset preferences</button>
+    </div>
+  </dialog>
+
+  <dialog id="commandDialog" class="command-dialog">
+    <div class="command-search">
+      <span>⌕</span>
+      <input id="commandQuery" placeholder="Search objects, tools, or actions…"
+        aria-label="Search commands" autocomplete="off">
+      <button data-close-dialog>Esc</button>
+    </div>
+    <div id="commandResults"></div>
+    <div class="command-help">↑ ↓ Navigate · Enter Run · Esc Close</div>
+  </dialog>
+
+  <input id="fileInput" type="file" hidden multiple
+    accept=".glb,.gltf,.obj,.mtl,.bin,.png,.jpg,.jpeg,.webp">
+
+  <noscript>This editor requires JavaScript and WebGL2.</noscript>
+</body>
+</html>
