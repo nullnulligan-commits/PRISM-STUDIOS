@@ -817,3 +817,40 @@ body.output-mode #viewportHint {
     flex-wrap: wrap;
   }
 }
+
+#cpuOutput {
+  width: min(1000px, calc(100vw - 28px));
+}
+
+.cpu-image-wrap {
+  padding: 16px;
+  background: #111318;
+  display: flex;
+  justify-content: center;
+}
+
+#cpuCanvas {
+  display: block;
+  max-width: 100%;
+  max-height: 58dvh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.cpu-controls {
+  padding: 16px 20px;
+}
+
+.cpu-controls > label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#cpuStatus {
+  overflow-wrap: anywhere;
+}
