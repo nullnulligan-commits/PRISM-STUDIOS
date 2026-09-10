@@ -1941,7 +1941,7 @@ function updateRenderHUD(now) {
 function animate(now = 0) {
   requestAnimationFrame(animate);
 
-  if (document.hidden || contextLost) return;
+  if (document.hidden || contextLost document.querySelector('#cpuOutput')?.open return;
   if (now - lastFrame < 1000 / preferences.fps - .5) return;
   lastFrame = now;
 
@@ -2005,4 +2005,4 @@ installCPUBackend({
   camera,
   content,
   renderGPU: () => setMode('output')
-});
+}
