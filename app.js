@@ -1998,3 +1998,11 @@ if (matchMedia('(max-width: 520px)').matches) {
 
 $('#status').textContent = 'Ready — Ctrl/Cmd K opens commands';
 requestAnimationFrame(animate);
+
+installCPUBackend({
+  THREE,
+  scene,
+  camera,
+  content,
+  renderGPU: () => setMode('output')
+});
