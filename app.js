@@ -2006,11 +2006,21 @@ if (matchMedia('(max-width: 520px)').matches) {
 $('#status').textContent = 'Ready — Ctrl/Cmd K opens commands';
 requestAnimationFrame(animate);
 
-// CPU rendering backend.
-installCPUBackend({
-  THREE,
-  scene,
-  camera,
-  content,
-  renderGPU: () => setMode('output')
-});
+// CPU rendering backend — optional. A failure here must never break the editor.
+import('./cpu-renderer.js')
+  .then(module => {
+    module.installCPUBackend({
+      THREE,
+      scene,
+      camera,
+      content,
+      renderGPU: () => setMode('output')
+    });
+  })
+  .catch(error => {
+    console.warn('CPU renderer unavailable:', error);
+    toast(
+      'CPU rendering is disabled (see console). GPU rendering still works.',
+      7000
+    );
+  });
